@@ -1,0 +1,52 @@
+/* Styles go here */
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    cursor: crosshair;
+
+     -ms-overflow-style: none;
+}
+
+canvas {
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAMAAAC6sdbXAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAAZQTFRF3d3d////riJKgAAAAAJ0Uk5T/wDltzBKAAAAFUlEQVR42mJgBAEGGMmAxAYCgAADAAGGABmnk/7aAAAAAElFTkSuQmCC);
+}
+
+#container {
+    position: relative;
+}
+
+#hud {
+    position: absolute;
+    top: 0.5em;
+    right: 0.5em;
+}
+
+.color {
+    display: inline-block;
+    cursor: pointer;
+    width: 2em;
+    height: 2em;
+    border: 1px solid black;
+    border-radius: 50em;
+}
+
+.green {
+    background-color: #0F0;
+}
+
+.red {
+    background-color: #F00;
+}
+
+.blue {
+    background-color: #00F;
+}
+
+.status {
+    display: inline-block;
+}
