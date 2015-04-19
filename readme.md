@@ -19,6 +19,9 @@ Make sure you have read the requirements section before.
 
  - [FontAwesome](http://fontawesome.io/) - icons
 
+ - [RxJS](http://reactivex.io/) - An API for asynchronous programming
+with observable streams
+
 ## Development
 
 The client side code needs to be ```browserified``` before running, to do that run
@@ -35,3 +38,7 @@ One time build is available with:
 Start the server with the command:
 
 ```node server.js```
+
+## License
+
+MIT

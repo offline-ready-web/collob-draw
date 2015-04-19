@@ -1,6 +1,6 @@
 
 var Hammer = require("hammerjs");
-var Rx = require("rx");
+var Rx = require("rx-lite");
 
 var SwarmApp = require("./SwarmApp");
 var User = require("../model/User");
