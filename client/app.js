@@ -1,16 +1,22 @@
 
-var Hammer = require("hammerjs");
 var Rx = require("rx");
+var simplify = require("simplify-geometry");
 
 var SwarmApp = require("./SwarmApp");
+var InputHandler = require("./InputHandler");
 var User = require("../model/User");
 var Item = require("../model/Item");
 var ItemList = require("../model/ItemList");
 
 // Refactor into separate class
 var canvasEl = document.getElementById("kanvas");
+var statusEl = document.querySelector(".status");
+
+var SIMPLIFY_CONFICENT = 0.3;
+
 var wsServer = "ws://localhost:8000/";
 var canvasId = location.hash.replace("#", "") || "global";
+var input;
 var color;
 var hammer;
 var context;
@@ -27,8 +33,7 @@ function main ()
 
     user = new User(app.getAppId());
 
-    // Hammer responsible for the touch events
-    hammer = new Hammer(canvasEl);
+    input = new InputHandler(canvasEl);
 
     var size = {
         width: window.innerWidth,
@@ -49,8 +54,8 @@ function main ()
             item.points.forEach(function (point)
             {
                 var calcPoint = {
-                    x: x - point.dx,
-                    y: y - point.dy
+                    x: x - point[0],
+                    y: y - point[1]
                 };
 
                 draw(calcPoint);
@@ -61,13 +66,27 @@ function main ()
     app.host.on("reon", function ()
     {
         console.log("Reconnect");
+        statusEl.textContent = "Online " + app.host.isUplinked();
         handleItemsDraw(items);
     });
 
+    app.host.on("off", function (spec, val)
+    {
+        statusEl.textContent = "Offline " + app.host.isUplinked();
+    });
+
+    app.host.on("reoff", function (spec, val)
+    {
+       statusEl.textContent = "Offline " + app.host.isUplinked();
+    });
+
     items = app.host.get("/ItemList#items" + canvasId);
-    // items = new ItemList('items');
     items.on("init", function ()
     {
+        if (this._version !== "!0") {
+            return;
+        }
+
         console.log("State revived");
         handleItemsDraw(items);
     });
@@ -108,10 +127,11 @@ function setCanvasSize (size)
 function reisizeHandler ()
 {
     var resize = Rx.Observable.fromEvent(window, 'resize')
-        .map(function (e) {
+        .map(function (e)
+        {
             return {
                 width: e.target.innerWidth,
-                height: e.target.innerHeight,
+                height: e.target.innerHeight
             };
         });
 
@@ -120,52 +140,23 @@ function reisizeHandler ()
 
 function handler ()
 {
-    var eventsList = "panstart panleft panright panup pandown pan tap";
+    var touch = input.getStream();
 
-    var touch = Rx.Observable.create(function (observer) {
-        hammer.on(eventsList, function (e) {
+    // Draw
+    touch.subscribe(draw);
 
-            e.color = color;
-            // Yield a single value and complete
-            observer.onNext(e);
-            //observer.onCompleted();
-
-            /*
-             if (e.isFinal) {
-             observer.onCompleted();
-             }
-             */
-        });
-
-        // Any cleanup logic might go here
-        return function () {
-            console.log('disposed');
-        };
-    });
-
-    var subscription = touch
-        .map(function (e) {
-            // console.log(e);
-            return {
-                x: e.center.x,
-                y: e.center.y,
-                color: e.color
-            };
-        })
-        .subscribe(draw);
-
-    var openings = Rx.Observable.interval(500);
-
+    // For syncing use time buffered stream
+    var openings = Rx.Observable.interval(2500);
     var bufferedPoints = touch
         .buffer(openings)
         .map(function (array)
         {
             return array.map(function (point)
             {
-                return {
-                    x: point.center.x,
-                    y: point.center.y
-                };
+                return [
+                    point.x,
+                    point.y
+                ];
             });
         });
 
@@ -177,18 +168,22 @@ function handler ()
             return;
         }
 
+        var first = points.shift();
+
         var itemData = {
-            "startX": points[0].x,
-            "startY": points[1].y
+            "startX": first[0],
+            "startY": first[1]
         };
 
-        itemData.points = points.map(function (point) {
+        // Simplify the points array
+        itemData.points = simplify(points.map(function (point) {
 
-            return {
-                "dx": itemData.startX - point.x,
-                "dy": itemData.startY - point.y
-            };
-        });
+            return [
+                itemData.startX - point[0],
+                itemData.startY - point[1]
+            ];
+
+        }), SIMPLIFY_CONFICENT);
 
         // Create the ink item
         var newItem = new Item();
@@ -206,7 +201,7 @@ function debug (e)
 
 function draw (point)
 {
-    context.fillStyle = '#' + point.color || 'FFF';
+    context.fillStyle = '#' + point.color || color || 'FFF';
     context.beginPath();
     context.arc(point.x, point.y, 2.5, 0, Math.PI * 2, true );
     context.closePath();
