@@ -31,15 +31,9 @@ function main ()
     app.init(wsServer);
     app.addListeners();
 
-    user = new User(app.getAppId());
-
     input = new InputHandler(canvasEl);
 
-    var size = {
-        width: window.innerWidth,
-        height: window.innerHeight
-    };
-    setCanvasSize(size);
+    setCanvasSize(getWindowSize());
 
     context = canvasEl.getContext("2d");
 
@@ -50,23 +44,33 @@ function main ()
         {
             var x = item.startX || 0;
             var y = item.startY || 0;
+            var bbox = item.getBBox();
+
+            // Clear background
+            //context.clearRect(bbox.x, bbox.y, bbox.width, bbox.height);
+
+            // Debug box
+            drawRect(bbox);
 
             item.points.forEach(function (point)
             {
                 var calcPoint = {
                     x: x - point[0],
-                    y: y - point[1]
+                    y: y - point[1],
+                    color: item.color
                 };
 
-                draw(calcPoint);
+                drawPoint(calcPoint);
             });
         });
     };
 
+    // Application level events
     app.host.on("reon", function ()
     {
         console.log("Reconnect");
         statusEl.textContent = "Online " + app.host.isUplinked();
+
         handleItemsDraw(items);
     });
 
@@ -78,6 +82,14 @@ function main ()
     app.host.on("reoff", function (spec, val)
     {
        statusEl.textContent = "Offline " + app.host.isUplinked();
+    });
+
+    // Data structure specific events
+    user = new User(app.getAppId());
+    user.on("init", function ()
+    {
+        console.log("User state loaded", user.color, user);
+        color = user.color;
     });
 
     items = app.host.get("/ItemList#items" + canvasId);
@@ -97,17 +109,25 @@ function main ()
         console.log("Received item", spec.op(), item);
 
         console.log("Draw points", item.points.length);
-        handleItemsDraw(items);
-    });
 
-    user.on("init", function ()
-    {
-        console.log("User state loaded", user);
-        color = user.color;
+        handleItemsDraw(items);
     });
 
     reisizeHandler();
     handler();
+}
+
+/**
+ * Get window size
+ *
+ * @returns {{width: Number, height: Number}}
+ */
+function getWindowSize () {
+
+    return {
+        width: window.innerWidth,
+        height: window.innerHeight
+    };
 }
 
 /**
@@ -143,7 +163,7 @@ function handler ()
     var touch = input.getStream();
 
     // Draw
-    touch.subscribe(draw);
+    touch.subscribe(drawPoint);
 
     // For syncing use time buffered stream
     var openings = Rx.Observable.interval(2500);
@@ -172,7 +192,8 @@ function handler ()
 
         var itemData = {
             "startX": first[0],
-            "startY": first[1]
+            "startY": first[1],
+            "color": color
         };
 
         // Simplify the points array
@@ -196,16 +217,22 @@ function handler ()
 
 function debug (e)
 {
-    console.log("E", e);
+    console.log("Event", e);
 }
 
-function draw (point)
+function drawPoint (point)
 {
     context.fillStyle = '#' + point.color || color || 'FFF';
     context.beginPath();
     context.arc(point.x, point.y, 2.5, 0, Math.PI * 2, true );
     context.closePath();
     context.fill();
+}
+
+function drawRect (rect)
+{
+    context.rect(rect.x, rect.y, rect.width, rect.height);
+    context.stroke();
 }
 
 main();

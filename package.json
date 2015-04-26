@@ -26,6 +26,7 @@
     "leveldown": "^0.10.4",
     "minimist": "^1.1.0",
     "rx": "^2.5.2",
+    "simplify-geometry": "0.0.2",
     "swarm": "^0.3.25",
     "swarm-restapi": "^0.3.24",
     "ws": "^0.4.32"
@@ -40,7 +41,6 @@
     "browserify-shim": "^3.8.0",
     "envify": "^3.0.0",
     "rx-lite": "^2.5.2",
-    "simplify-geometry": "0.0.2",
     "watchify": "^2.4.0"
   }
 }
