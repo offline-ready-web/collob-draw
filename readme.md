@@ -39,6 +39,10 @@ Start the server with the command:
 
 ```node server.js```
 
+## TODO
+
+ - Refactor the client code into separate classes.
+
 ## License
 
 MIT

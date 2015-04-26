@@ -19,7 +19,7 @@ SwarmApp.prototype.init = function (hostUrl)
     this.storage = new Swarm.SharedWebStorage("cache");
 
     // Setup the connecting host
-    this.host = new Swarm.Host(this.id + hash.replace('#', '~'), 0, this.storage);
+    this.host = new Swarm.Host(this.id, 0, this.storage);
     this.host.connect(hostUrl);
 };
 

@@ -1,14 +1,16 @@
 
 var Hammer = require("hammerjs");
-var Rx = require("rx-lite");
+var Rx = require("rx");
 
 var SwarmApp = require("./SwarmApp");
 var User = require("../model/User");
 var Item = require("../model/Item");
 var ItemList = require("../model/ItemList");
 
+// Refactor into separate class
 var canvasEl = document.getElementById("kanvas");
 var wsServer = "ws://localhost:8000/";
+var canvasId = location.hash.replace("#", "") || "global";
 var color;
 var hammer;
 var context;
@@ -30,20 +32,28 @@ function main ()
 
     var size = {
         width: window.innerWidth,
-        height: window.innerHeight,
+        height: window.innerHeight
     };
     setCanvasSize(size);
 
     context = canvasEl.getContext("2d");
 
-    var handleItemsDraw = function ()
+    var handleItemsDraw = function (items)
     {
         // Draw all items
         items.forEach(function (item)
         {
+            var x = item.startX || 0;
+            var y = item.startY || 0;
+
             item.points.forEach(function (point)
             {
-                draw(point);
+                var calcPoint = {
+                    x: x - point.dx,
+                    y: y - point.dy
+                };
+
+                draw(calcPoint);
             });
         });
     };
@@ -51,31 +61,24 @@ function main ()
     app.host.on("reon", function ()
     {
         console.log("Reconnect");
-        handleItemsDraw();
+        handleItemsDraw(items);
     });
 
-    // items = app.host.get("/ItemList#items");
-    items = new ItemList('items');
+    items = app.host.get("/ItemList#items" + canvasId);
+    // items = new ItemList('items');
     items.on("init", function ()
     {
         console.log("State revived");
-        handleItemsDraw();
+        handleItemsDraw(items);
     });
 
     items.on(function (spec, val, source)
     {
         var item = items.getObject(val);
-        console.log("Recevied item", spec.op(), item);
+        console.log("Received item", spec.op(), item);
 
         console.log("Draw points", item.points.length);
-        items.forEach(function (item)
-        {
-            item.points.forEach(function (point)
-            {
-                draw(point);
-            });
-        });
-
+        handleItemsDraw(items);
     });
 
     user.on("init", function ()
@@ -117,10 +120,9 @@ function reisizeHandler ()
 
 function handler ()
 {
-    var eventsList = "panstart pan";
+    var eventsList = "panstart panleft panright panup pandown pan tap";
 
     var touch = Rx.Observable.create(function (observer) {
-        // var color = (~~(Math.random() * (1<<24))).toString(16);
         hammer.on(eventsList, function (e) {
 
             e.color = color;
@@ -147,7 +149,7 @@ function handler ()
             return {
                 x: e.center.x,
                 y: e.center.y,
-                color: e.color,
+                color: e.color
             };
         })
         .subscribe(draw);
@@ -169,15 +171,30 @@ function handler ()
 
     bufferedPoints.subscribe(function (points)
     {
-        if (0 >= points.length)
+        if (1 >= points.length)
         {
             console.log("Not enough points");
             return;
         }
 
-        var newItem = new Item();
+        var itemData = {
+            "startX": points[0].x,
+            "startY": points[1].y
+        };
 
-        newItem.set({ "points": points });
+        itemData.points = points.map(function (point) {
+
+            return {
+                "dx": itemData.startX - point.x,
+                "dy": itemData.startY - point.y
+            };
+        });
+
+        // Create the ink item
+        var newItem = new Item();
+        newItem.set(itemData);
+
+        // Insert item to list
         items.insert(newItem);
     });
 }
@@ -191,7 +208,7 @@ function draw (point)
 {
     context.fillStyle = '#' + point.color || 'FFF';
     context.beginPath();
-    context.arc(point.x, point.y, 5, 0, Math.PI * 2, true );
+    context.arc(point.x, point.y, 2.5, 0, Math.PI * 2, true );
     context.closePath();
     context.fill();
 }
