@@ -5,6 +5,7 @@ var simplify = require("simplify-geometry");
 var SwarmApp = require("./SwarmApp");
 var InputHandler = require("./InputHandler");
 var User = require("../model/User");
+var UserList = require("../model/UserList");
 var Item = require("../model/Item");
 var ItemList = require("../model/ItemList");
 
@@ -18,14 +19,16 @@ var wsServer = "ws://localhost:8000/";
 var canvasId = location.hash.replace("#", "") || "global";
 var input;
 var color;
-var hammer;
 var context;
 var app;
 var user;
+var users;
 var items;
 
 function main ()
 {
+    var size = getWindowSize();
+
     // Swarm setup
     app = new SwarmApp();
     app.init(wsServer);
@@ -33,12 +36,14 @@ function main ()
 
     input = new InputHandler(canvasEl);
 
-    setCanvasSize(getWindowSize());
+    setCanvasSize(size);
 
     context = canvasEl.getContext("2d");
 
     var handleItemsDraw = function (items)
     {
+        context.clearRect(0, 0, size.width, size.height);
+
         // Draw all items
         items.forEach(function (item)
         {
@@ -50,7 +55,7 @@ function main ()
             //context.clearRect(bbox.x, bbox.y, bbox.width, bbox.height);
 
             // Debug box
-            drawRect(bbox);
+            //drawRect(bbox);
 
             item.points.forEach(function (point)
             {
@@ -88,8 +93,26 @@ function main ()
     user = new User(app.getAppId());
     user.on("init", function ()
     {
+        user.set({
+            "name": user.generateRandomName()
+        });
+
         console.log("User state loaded", user.color, user);
+        document.title = "Connected - " + app.getAppId();
         color = user.color;
+    });
+
+    // The users related to canvas
+    users = app.host.get("/UserList#users" + canvasId);
+    users.on("init", function ()
+    {
+        if (this._version !== "!0") {
+            return;
+        }
+
+        console.log("List users", users);
+
+        users.addObject(user);
     });
 
     items = app.host.get("/ItemList#items" + canvasId);
@@ -113,6 +136,7 @@ function main ()
         handleItemsDraw(items);
     });
 
+    onLoadHandler();
     reisizeHandler();
     handler();
 }
@@ -156,6 +180,19 @@ function reisizeHandler ()
         });
 
     resize.subscribe(setCanvasSize);
+}
+
+function onLoadHandler () {
+
+    var handler = function ()
+    {
+        console.log("Before unload remove user");
+        users.removeObject(user);
+
+        app.host.close();
+    };
+
+    window.addEventListener("onbeforeunload", handler, false);
 }
 
 function handler ()
