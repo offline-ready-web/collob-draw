@@ -35,15 +35,15 @@ canvas {
     border-radius: 50em;
 }
 
-.green {
+div[data-color="green"] {
     background-color: #0F0;
 }
 
-.red {
+div[data-color="red"] {
     background-color: #F00;
 }
 
-.blue {
+div[data-color="blue"] {
     background-color: #00F;
 }
 

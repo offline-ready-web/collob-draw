@@ -13,6 +13,7 @@ var ItemList     = require("../model/ItemList");
 // Refactor into separate class
 var canvasEl = document.getElementById("kanvas");
 var statusEl = document.querySelector(".status");
+var colors   = document.querySelector(".colors");
 
 var SIMPLIFY_CONFICENT = 0.3;
 
@@ -50,6 +51,8 @@ function main ()
     onLoadHandler();
     reisizeHandler();
     handler();
+
+    colorSelectionHandler();
 }
 
 function handleItemsDraw (items)
@@ -146,6 +149,30 @@ function itemsHandler ()
         console.log("Ready", spec);
         handleItemsDraw([ source ]);
     });
+}
+
+/**
+ * Handle the clicked colors.
+ */
+function colorSelectionHandler ()
+{
+    var clickHandler = function (ev)
+    {
+        var colorMap = {
+            red  : "F00",
+            green: "0F0",
+            blue : "00F",
+        };
+
+        // Get color from data attribute
+        color = colorMap[ev.target.dataset.color] || "FFF";
+
+        user.set({ "color": color });
+
+        console.log("Change user color", color);
+    };
+
+    colors.addEventListener("click", clickHandler);
 }
 
 /**
