@@ -19,15 +19,15 @@ SwarmApp.prototype.init = function (hostUrl)
     this.storage = new Swarm.SharedWebStorage("cache");
 
     // Setup the connecting host
-    this.host = new Swarm.Host(this.id, 0, this.storage);
+    this.host = new Swarm.Host(this.getAppId() + "~" + this.getSID(), 100, this.storage);
     this.host.connect(hostUrl);
 };
 
 SwarmApp.prototype.addListeners = function ()
 {
-    this.host.on("reon", this.hostHandler);
-    this.host.on("reoff", this.hostHandler);
-    this.host.on("off", this.hostHandler);
+   this.host.on("reon", this.hostHandler);
+   this.host.on("reoff", this.hostHandler);
+   this.host.on("off", this.hostHandler);
 };
 
 SwarmApp.prototype.hostHandler = function (spec, val)
@@ -38,7 +38,12 @@ SwarmApp.prototype.hostHandler = function (spec, val)
 SwarmApp.prototype.getAppId = function ()
 {
     return window.localStorage.getItem("localuser") ||
-        "A" + Swarm.Spec.int2base(~~(Math.random() * 10000));
+        "A" + Swarm.Spec.int2base(~~(Math.random() * 10000) | 0);
+};
+
+SwarmApp.prototype.getSID = function ()
+{
+    return Swarm.Spec.int2base(~~(Math.random() * 10000) | 0);
 };
 
 SwarmApp.prototype.setAppId = function (id)

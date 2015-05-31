@@ -1,24 +1,23 @@
 
-// Simple Swarm sync server: picks model classes from a directory,
-// starts a WebSocket server at a port. Serves some static content,
-// although I'd recomment to shield it with nginx.
-var fs = require('fs');
-var path = require('path');
-var url = require('url');
-var http = require('http');
+var fs       = require('fs');
+var path     = require('path');
+var url      = require('url');
+var http     = require('http');
+var blocked  = require('blocked');
+var minimist = require('minimist');
 
-var redis = require('redis');
-var ws_lib = require('ws');
-var express = require('express');
+var redis       = require('redis');
+var ws_lib      = require('ws');
+var express     = require('express');
 var compression = require('compression');
 
-var Swarm = require('swarm');
-var RestAPI = require('swarm-restapi');
-var leveldown = require('leveldown');
+var Swarm           = require('swarm');
+var RestAPI         = require('swarm-restapi');
+var leveldown       = require('leveldown');
 var EinarosWSStream = require('swarm/lib/EinarosWSStream');
 
 var args = process.argv.slice(2);
-var argv = require('minimist')(args, {
+var argv = minimist(args, {
     alias: {
         models: 'm',
         port:  'p',
@@ -41,23 +40,29 @@ app.use(compression());
 app.use(express.static('./client'));
 app.use(express.static('./dist'));
 
+// Check if the event loop is blocking
+blocked(function (ms) {
+
+   console.log("measure#node.process.blocked=" + ms + "ms");
+});
+
 var fileStorage = new Swarm.FileStorage(argv.store);
 
 var redisStorage = new Swarm.RedisStorage('dummy', {
-    redis: redis,
-    redisConnectParams: {
-        port: 6379,
-        host: '127.0.0.1',
-        options: {}
-    }
+   redis: redis,
+   redisConnectParams: {
+       port: 6379,
+       host: '127.0.0.1',
+       options: {}
+   }
 });
 
 redisStorage.open(function (conn) {
-    console.log("Redis connection up");
+   console.log("Redis connection up");
 });
 
 // create Swarm Host
-app.swarmHost = new Swarm.Host('swarm~nodejs', 0, fileStorage);
+app.swarmHost = new Swarm.Host('swarm~nodejs', 0, redisStorage);
 Swarm.env.localhost = app.swarmHost;
 
 var apiHandler = RestAPI.createHandler({

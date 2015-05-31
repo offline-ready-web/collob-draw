@@ -43,6 +43,8 @@ Start the server with the command:
 
  - Refactor the client code into separate classes.
 
+ - Add the drawing queue which is only is buffer for drawable items.
+
 ## License
 
 MIT

@@ -1,13 +1,14 @@
 
-var Rx = require("rx");
+var Rx       = require("rx");
+var raf      = require("raf");
 var simplify = require("simplify-geometry");
 
-var SwarmApp = require("./SwarmApp");
+var SwarmApp     = require("./SwarmApp");
 var InputHandler = require("./InputHandler");
-var User = require("../model/User");
-var UserList = require("../model/UserList");
-var Item = require("../model/Item");
-var ItemList = require("../model/ItemList");
+var User         = require("../model/User");
+var UserList     = require("../model/UserList");
+var Item         = require("../model/Item");
+var ItemList     = require("../model/ItemList");
 
 // Refactor into separate class
 var canvasEl = document.getElementById("kanvas");
@@ -15,8 +16,9 @@ var statusEl = document.querySelector(".status");
 
 var SIMPLIFY_CONFICENT = 0.3;
 
-var wsServer = "ws://localhost:8000/";
+var wsServer = "ws://" + window.location.host;
 var canvasId = location.hash.replace("#", "") || "global";
+var drawBuffer = [];
 var input;
 var color;
 var context;
@@ -40,36 +42,42 @@ function main ()
 
     context = canvasEl.getContext("2d");
 
-    var handleItemsDraw = function (items)
+    applicationHandler();
+    usersHandler();
+    itemsHandler();
+
+    onDraw();
+    onLoadHandler();
+    reisizeHandler();
+    handler();
+}
+
+function handleItemsDraw (items)
+{
+    // Draw all items
+    items.forEach(function (item)
     {
-        context.clearRect(0, 0, size.width, size.height);
+        var x = item.startX || 0;
+        var y = item.startY || 0;
 
-        // Draw all items
-        items.forEach(function (item)
+        item.points.forEach(function (point)
         {
-            var x = item.startX || 0;
-            var y = item.startY || 0;
-            var bbox = item.getBBox();
+            var calcPoint = {
+                x: x - point[0],
+                y: y - point[1],
+                color: item.color
+            };
 
-            // Clear background
-            //context.clearRect(bbox.x, bbox.y, bbox.width, bbox.height);
-
-            // Debug box
-            //drawRect(bbox);
-
-            item.points.forEach(function (point)
-            {
-                var calcPoint = {
-                    x: x - point[0],
-                    y: y - point[1],
-                    color: item.color
-                };
-
-                drawPoint(calcPoint);
-            });
+            drawBuffer.push(calcPoint);
         });
-    };
+    });
+}
 
+/**
+ * Application level event handler.
+ */
+function applicationHandler ()
+{
     // Application level events
     app.host.on("reon", function ()
     {
@@ -86,37 +94,43 @@ function main ()
 
     app.host.on("reoff", function (spec, val)
     {
-       statusEl.textContent = "Offline " + app.host.isUplinked();
+        statusEl.textContent = "Offline " + app.host.isUplinked();
     });
+}
 
+/**
+ * User level event handling.
+ */
+function usersHandler ()
+{
     // Data structure specific events
     user = new User(app.getAppId());
-    user.on("init", function ()
+    user.once("init", function ()
     {
-        user.set({
-            "name": user.generateRandomName()
-        });
+        user.set({ "name": user.generateRandomName() });
 
-        console.log("User state loaded", user.color, user);
         document.title = "Connected - " + app.getAppId();
         color = user.color;
     });
 
-    // The users related to canvas
     users = app.host.get("/UserList#users" + canvasId);
-    users.on("init", function ()
-    {
-        if (this._version !== "!0") {
-            return;
-        }
+    users.addObject(user);
+}
 
-        console.log("List users", users);
+function itemsHandler ()
+{
+    // Get the items list reference to this canvas
+    items = app.host.get("/ItemList#items" + canvasId);
+    items.on(".on", function (spec, val, source) {
 
-        users.addObject(user);
+       console.log("Item", spec);
+       var newItem = items.getObject(val);
+
+       handleItemsDraw([ newItem ]);
     });
 
-    items = app.host.get("/ItemList#items" + canvasId);
-    items.on("init", function ()
+    // Triggers only on the first time when object is ready
+    items.onObjectStateReady(function ()
     {
         if (this._version !== "!0") {
             return;
@@ -126,19 +140,12 @@ function main ()
         handleItemsDraw(items);
     });
 
-    items.on(function (spec, val, source)
+    // Triggers only locally, not on the remote
+    items.onObjectEvent(function (spec, val, source)
     {
-        var item = items.getObject(val);
-        console.log("Received item", spec.op(), item);
-
-        console.log("Draw points", item.points.length);
-
-        handleItemsDraw(items);
+        console.log("Ready", spec);
+        handleItemsDraw([ source ]);
     });
-
-    onLoadHandler();
-    reisizeHandler();
-    handler();
 }
 
 /**
@@ -146,8 +153,8 @@ function main ()
  *
  * @returns {{width: Number, height: Number}}
  */
-function getWindowSize () {
-
+function getWindowSize ()
+{
     return {
         width: window.innerWidth,
         height: window.innerHeight
@@ -182,8 +189,24 @@ function reisizeHandler ()
     resize.subscribe(setCanvasSize);
 }
 
-function onLoadHandler () {
+function onDraw()
+{
+    var draw = function ()
+    {
+        // Animation logic here
+        var partBuffer = drawBuffer.splice(0, 80);
 
+        partBuffer.map(drawPoint);
+
+        raf(draw);
+    };
+
+    // Start drawing using the requestanimationframe
+    raf(draw);
+}
+
+function onLoadHandler ()
+{
     var handler = function ()
     {
         console.log("Before unload remove user");
@@ -244,8 +267,7 @@ function handler ()
         }), SIMPLIFY_CONFICENT);
 
         // Create the ink item
-        var newItem = new Item();
-        newItem.set(itemData);
+        var newItem = new Item(itemData);
 
         // Insert item to list
         items.insert(newItem);
