@@ -5,6 +5,7 @@ var simplify = require("simplify-geometry");
 
 var SwarmApp     = require("./SwarmApp");
 var InputHandler = require("./InputHandler");
+var CMRtoBezier  = require("./CMRtoBezier");
 var User         = require("../model/User");
 var UserList     = require("../model/UserList");
 var Item         = require("../model/Item");
@@ -197,6 +198,11 @@ function setCanvasSize (size)
 
     canvasEl.setAttribute("width", size.width);
     canvasEl.setAttribute("height", size.height);
+
+    if (items && items.objects)
+    {
+        handleItemsDraw(items.objects);
+    }
 }
 
 /**
@@ -204,7 +210,10 @@ function setCanvasSize (size)
  */
 function reisizeHandler ()
 {
+    var DUE_TIME = 150;
+
     var resize = Rx.Observable.fromEvent(window, 'resize')
+        .debounce(DUE_TIME)
         .map(function (e)
         {
             return {
