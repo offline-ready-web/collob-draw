@@ -157,6 +157,21 @@ function itemsHandler ()
  */
 function colorSelectionHandler ()
 {
+    var toggleButton = function (el, className)
+    {
+        var elements = colors.querySelectorAll("." + className);
+
+        Array.prototype.forEach.call(elements, function (selEl)
+        {
+            if (selEl.classList.contains(className))
+            {
+                selEl.classList.remove(className);
+            }
+        });
+
+        el.classList.add(className);
+    };
+
     var clickHandler = function (ev)
     {
         var colorMap = {
@@ -169,6 +184,8 @@ function colorSelectionHandler ()
         color = colorMap[ev.target.dataset.color] || "FFF";
 
         user.set({ "color": color });
+
+        toggleButton(ev.target, "selected");
 
         console.log("Change user color", color);
     };

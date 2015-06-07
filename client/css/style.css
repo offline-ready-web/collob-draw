@@ -31,7 +31,7 @@ canvas {
     cursor: pointer;
     width: 2em;
     height: 2em;
-    border: 1px solid black;
+    border: 2.5px solid black;
     border-radius: 50em;
 }
 
@@ -49,4 +49,9 @@ div[data-color="blue"] {
 
 .status {
     display: inline-block;
+}
+
+.selected {
+    opacity: 0.8;
+    border-color: #DEF;
 }
